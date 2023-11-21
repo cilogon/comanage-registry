@@ -144,6 +144,7 @@ function comanage_utils::consume_injected_environment() {
         COMANAGE_REGISTRY_EMAIL_PORT
         COMANAGE_REGISTRY_EMAIL_ACCOUNT
         COMANAGE_REGISTRY_EMAIL_ACCOUNT_PASSWORD
+        COMANAGE_REGISTRY_EMAIL_REPLY_TO
         COMANAGE_REGISTRY_HTTP_LISTEN_PORT
         COMANAGE_REGISTRY_HTTP_NO
         COMANAGE_REGISTRY_HTTPS_LISTEN_PORT
@@ -524,6 +525,7 @@ EOF
 #   COMANAGE_REGISTRY_EMAIL_HOST
 #   COMANAGE_REGISTRY_EMAIL_PORT
 #   COMANAGE_REGISTRY_EMAIL_TRANSPORT
+#   COMANAGE_REGISTRY_EMAIL_REPLY_TO
 #   COMANAGE_REGISTRY_DIR
 # Arguments:
 #   None
@@ -599,6 +601,11 @@ EOF
     if [[ -n "${COMANAGE_REGISTRY_EMAIL_ACCOUNT_PASSWORD}" ]]; then
         php_string+=$'\n\t\t'
         php_string+="'password' => '${COMANAGE_REGISTRY_EMAIL_ACCOUNT_PASSWORD}',"
+    fi
+
+    if [[ -n "${COMANAGE_REGISTRY_EMAIL_REPLY_TO}" ]]; then
+        php_string+=$'\n\t\t'
+        php_string+="'replyTo' => '${COMANAGE_REGISTRY_EMAIL_REPLY_TO}',"
     fi
 
     php_string+=$'\n\t\t);\n\n}\n';
