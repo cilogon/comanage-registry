@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y \
       && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
       && docker-php-ext-configure ldap \
       && docker-php-ext-configure mysqli \
-      && docker-php-ext-install xsl pdo pdo_mysql pdo_pgsql mysqli pgsql ldap \
+      && docker-php-ext-install xsl pdo pdo_mysql pdo_pgsql mysqli pgsql ldap opcache \
       && docker-php-source delete \
       && apt-get purge -y \
          libldap2-dev \
