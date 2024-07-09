@@ -49,7 +49,7 @@ RUN apt-get update && apt-get install -y \
 
 # Configure TLS CA signing certificates for LDAP TLS libraries.
 ARG LDAPTLS_CACERT
-ENV LDAPTLS_CACERT ${LDAPTLS_CACERT:-/etc/ssl/certs/ca-certificates.crt}
+ENV LDAPTLS_CACERT=${LDAPTLS_CACERT:-/etc/ssl/certs/ca-certificates.crt}
 LABEL ldaptls_cacert=${LDAPTLS_CACERT}
 
 # Build the redis extension to use Redis for session storage.
@@ -63,11 +63,11 @@ RUN docker-php-source extract \
 RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 ARG COMANAGE_REGISTRY_VERSION
-ENV COMANAGE_REGISTRY_VERSION ${COMANAGE_REGISTRY_VERSION:-develop}
+ENV COMANAGE_REGISTRY_VERSION=${COMANAGE_REGISTRY_VERSION:-develop}
 LABEL comanage_registry_version=${COMANAGE_REGISTRY_VERSION}
 
 ARG COMANAGE_REGISTRY_DIR
-ENV COMANAGE_REGISTRY_DIR ${COMANAGE_REGISTRY_DIR:-/srv/comanage-registry}
+ENV COMANAGE_REGISTRY_DIR=${COMANAGE_REGISTRY_DIR:-/srv/comanage-registry}
 LABEL comanage_registry_dir=${COMANAGE_REGISTRY_DIR}
 
 WORKDIR $COMANAGE_REGISTRY_DIR
@@ -88,7 +88,7 @@ RUN rm -f ${COMANAGE_REGISTRY_DIR}/app/tmp \
 
 # The environment variable CACHEDIR is used by the clearcache script.
 ARG CACHEDIR
-ENV CACHEDIR ${CACHEDIR:-/srv/comanage-registry/app/tmp/cache}
+ENV CACHEDIR=${CACHEDIR:-/srv/comanage-registry/app/tmp/cache}
 
 RUN a2enmod headers \
       && a2enmod ssl \
@@ -116,10 +116,10 @@ ARG COMANAGE_REGISTRY_ENABLE_POOLING
 
 # Set simple defaults for first administrator bootstrapped into the
 # platform to make simple evaluation of the platform easier.
-ENV COMANAGE_REGISTRY_ADMIN_GIVEN_NAME ${COMANAGE_REGISTRY_ADMIN_GIVEN_NAME:-Registry}
-ENV COMANAGE_REGISTRY_ADMIN_FAMILY_NAME ${COMANAGE_REGISTRY_ADMIN_FAMILY_NAME:-Admin}
-ENV COMANAGE_REGISTRY_ADMIN_USERNAME ${COMANAGE_REGISTRY_ADMIN_USERNAME:-registry.admin}
-ENV COMANAGE_REGISTRY_ENABLE_POOLING ${COMANAGE_REGISTRY_ENABLE_POOLING:-No}
+ENV COMANAGE_REGISTRY_ADMIN_GIVEN_NAME=${COMANAGE_REGISTRY_ADMIN_GIVEN_NAME:-Registry}
+ENV COMANAGE_REGISTRY_ADMIN_FAMILY_NAME=${COMANAGE_REGISTRY_ADMIN_FAMILY_NAME:-Admin}
+ENV COMANAGE_REGISTRY_ADMIN_USERNAME=${COMANAGE_REGISTRY_ADMIN_USERNAME:-registry.admin}
+ENV COMANAGE_REGISTRY_ENABLE_POOLING=${COMANAGE_REGISTRY_ENABLE_POOLING:-No}
 
 ENTRYPOINT ["docker-comanage-entrypoint"]
 
