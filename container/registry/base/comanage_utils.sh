@@ -145,6 +145,7 @@ function comanage_utils::consume_injected_environment() {
         COMANAGE_REGISTRY_EMAIL_ACCOUNT
         COMANAGE_REGISTRY_EMAIL_ACCOUNT_PASSWORD
         COMANAGE_REGISTRY_EMAIL_REPLY_TO
+        COMANAGE_REGISTRY_FORENSIC_LOG
         COMANAGE_REGISTRY_HTTP_LISTEN_PORT
         COMANAGE_REGISTRY_HTTP_NO
         COMANAGE_REGISTRY_HTTPS_LISTEN_PORT
@@ -338,6 +339,8 @@ function comanage_utils::exec_apache_http_server() {
     comanage_utils::prepare_mod_remoteip
 
     comanage_utils::prepare_virtual_host
+
+    comanage_utils::prepare_forensic_log_config
 
     comanage_utils::enable_virtual_host
 
@@ -611,6 +614,32 @@ EOF
     php_string+=$'\n\t\t);\n\n}\n';
 
     printf "%s" "$php_string" > $email_config
+}
+
+##########################################
+# Prepare forensic logging configuration
+# Globals:
+#   COMANAGE_REGISTRY_FORENSIC_LOG
+# Arguments:
+#   None
+# Returns:
+#   None
+##########################################
+function comanage_utils::prepare_forensic_log_config() {
+    local virtual_host_config
+    virtual_host_config="/etc/apache2/sites-available/000-comanage.conf"
+
+    if [[ -n "${COMANAGE_REGISTRY_FORENSIC_LOG}" ]]; then
+        /usr/sbin/a2enmod log_forensic > "$OUTPUT" 2>&1
+
+        pushd /var/log/apache2 > "$OUTPUT" 2>&1
+        ln -s /dev/stdout forensic.log > "$OUTPUT" 2>&1
+        chown -h www-data:www-data forensic.log > "$OUTPUT" 2>&1
+        popd
+
+        sed -i '/CustomLog/a ForensicLog ${APACHE_LOG_DIR}/forensic.log' $virtual_host_config > "$OUTPUT" 2>&1
+
+    fi
 }
 
 ##########################################
