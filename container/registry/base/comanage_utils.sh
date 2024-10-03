@@ -162,6 +162,7 @@ function comanage_utils::consume_injected_environment() {
         COMANAGE_REGISTRY_OIDC_SESSION_MAX_DURATION
         COMANAGE_REGISTRY_NO_DATABASE_CONFIG
         COMANAGE_REGISTRY_NO_EMAIL_CONFIG
+        COMANAGE_REGISTRY_PHP_MEMORY_LIMIT
         COMANAGE_REGISTRY_REMOTE_IP
         COMANAGE_REGISTRY_REMOTE_IP_HEADER
         COMANAGE_REGISTRY_REMOTE_IP_INTERNAL_PROXY
@@ -784,6 +785,7 @@ function comanage_utils::prepare_mod_remoteip() {
 # Prepare PHP session storage
 # Globals:
 #   COMANAGE_REGISTRY_PHP_SESSION_REDIS_URL
+#   COMANAGE_REGISTRY_PHP_MEMORY_LIMIT
 #   OUTPUT
 # Arguments:
 #   None
@@ -793,12 +795,17 @@ function comanage_utils::prepare_mod_remoteip() {
 function comanage_utils::prepare_php_session() {
 
     local php_ini
-    php_ini="/usr/local/etc/php"
+    php_ini="/usr/local/etc/php/php.ini"
 
     # Configure Redis for sessions if so configured.
     if [[ -n "${COMANAGE_REGISTRY_PHP_SESSION_REDIS_URL}" ]]; then
         sed -i -e '/session.save_handler/ s+files+redis+' $php_ini > ${OUTPUT} 2>&1
         sed -i -e "/session.save_handler/a session.save_path = ${COMANAGE_REGISTRY_PHP_SESSION_REDIS_URL}" $phi_ini > ${OUTPUT} 2>&1
+    fi
+
+    # Configure memory limit if so configured.
+    if [[ -n "${COMANAGE_REGISTRY_PHP_MEMORY_LIMIT}" ]]; then
+        sed -i -e "/memory_limit/ s@[[:digit:]]\+M@${COMANAGE_REGISTRY_PHP_MEMORY_LIMIT}@" $php_ini > ${OUTPUT} 2>&1
     fi
 }
 
