@@ -46,6 +46,7 @@ RUN docker-php-source extract \
 
 COPY --chown=root:root container/registry/crond/root-crontab /etc/crontab
 COPY --chown=root:root container/registry/crond/www-data-crontab /srv/comanage-registry/local/crontab
+COPY --chown=root:root --chmod 0755 container/registry/crond/delete-all-locks.sh /usr/local/bin/delete-all-locks.sh
 
 RUN /usr/bin/crontab -u www-data /srv/comanage-registry/local/crontab \
       && /usr/sbin/usermod --shell /bin/bash www-data \
