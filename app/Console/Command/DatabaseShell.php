@@ -295,11 +295,13 @@
         $columnDropMatches = array();
         preg_match($reDropColumn, $sqlQuery, $columnDropMatches);
         if (!empty($columnDropMatches)) {
-          // Before we drop we need to check for a foreign. If we find one we need to drop it first
-          $constraintName = $this->getConstraintNameFromColumn($columnDropMatches[1], $columnDropMatches[2], $this->dbc);
-          if (!empty($constraintName)) {
-            $subst = "ALTER TABLE $columnDropMatches[1] DROP CONSTRAINT $constraintName";
-            $dropConstraints[] = $subst;
+          // Before we drop we need to check for a foreign key. If we find one we need to drop it first
+          $constraintNames = $this->getConstraintNameFromColumn($columnDropMatches[1], $columnDropMatches[2], $this->dbc);
+          if (!empty($constraintNames)) {
+            foreach ($constraintNames as $constraintName) {
+              $subst = "ALTER TABLE $columnDropMatches[1] DROP CONSTRAINT $constraintName";
+              $dropConstraints[] = $subst;
+            }
           }
           $subst = "ALTER TABLE $columnDropMatches[1] DROP COLUMN `{$columnDropMatches[2]}`";
           $sqlQueryList[$idx] = $subst;
