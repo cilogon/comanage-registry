@@ -138,6 +138,7 @@ function comanage_utils::consume_injected_environment() {
         COMANAGE_REGISTRY_DATABASE_POSTGRES_SSLMODE
         COMANAGE_REGISTRY_DATABASE_USER
         COMANAGE_REGISTRY_DATABASE_USER_PASSWORD
+        COMANAGE_REGISTRY_DATABASE_VERBOSE
         COMANAGE_REGISTRY_EMAIL_FROM
         COMANAGE_REGISTRY_EMAIL_TRANSPORT
         COMANAGE_REGISTRY_EMAIL_HOST
@@ -270,6 +271,7 @@ function comanage_utils::enable_virtual_host() {
 # Enable non-core plugins
 # Globals:
 #   COMANAGE_REGISTRY_DIR
+#   COMANAGE_REGISTRY_DATABASE_VERBOSE
 #   COMANAGE_REGISTRY_ENABLE_PLUGIN
 #   OUTPUT
 # Arguments:
@@ -298,7 +300,11 @@ function comanage_utils::enable_plugins() {
 
         if [[ -z "${COMANAGE_REGISTRY_SKIP_SETUP}" ]]; then
             pushd "$COMANAGE_REGISTRY_DIR/app" > "$OUTPUT" 2>&1
-            ./Console/cake database > "$OUTPUT" 2>&1
+            if [[ -n "${COMANAGE_REGISTRY_DATABASE_VERBOSE}" ]]; then
+                ./Console/cake database > /dev/stdout 2>&1
+            else
+                ./Console/cake database > "$OUTPUT" 2>&1
+            fi
             popd > "$OUTPUT" 2>&1
         fi
 
@@ -995,6 +1001,7 @@ function comanage_utils::registry_clear_cache() {
 #   COMANAGE_REGISTRY_ADMIN_GIVEN_NAME
 #   COMANAGE_REGISTRY_ADMIN_FAMILY_NAME
 #   COMANAGE_REGISTRY_ADMIN_USERNAME
+#   COMANAGE_REGISTRY_DATABASE_VERBOSE
 #   COMANAGE_REGISTRY_DIR
 #   COMANAGE_REGISTRY_ENABLE_POOLING
 #   COMANAGE_REGISTRY_SECURITY_SALT
@@ -1062,7 +1069,11 @@ EOF
         rm -f "$COMANAGE_REGISTRY_DIR/local/Config/security.salt" > "$OUTPUT" 2>&1
         rm -f "$COMANAGE_REGISTRY_DIR/local/Config/security.seed" > "$OUTPUT" 2>&1
         echo "Running ./Console/cake database..." > "$OUTPUT"
-        ./Console/cake database > "$OUTPUT" 2>&1
+        if [[ -n "${COMANAGE_REGISTRY_DATABASE_VERBOSE}" ]]; then
+            ./Console/cake database > /dev/stdout 2>&1
+        else
+            ./Console/cake database > "$OUTPUT" 2>&1
+        fi
         echo "Running ./Console/cake setup..." > "$OUTPUT"
         ./Console/cake setup --admin-given-name "${COMANAGE_REGISTRY_ADMIN_GIVEN_NAME}" \
                              --admin-family-name "${COMANAGE_REGISTRY_ADMIN_FAMILY_NAME}" \
@@ -1093,6 +1104,7 @@ EOF
 # Globals:
 #   COMANAGE_REGISTRY_DATABASE_SCHEMA_FORCE
 #   COMANAGE_REGISTRY_DATABASE_SKIP_UPGRADE
+#   COMANAGE_REGISTRY_DATABASE_VERBOSE
 #   COMANAGE_REGISTRY_DIR
 #   OUTPUT
 # Arguments:
@@ -1129,7 +1141,11 @@ function comanage_utils::registry_upgrade() {
     if [ -n "$COMANAGE_REGISTRY_DATABASE_SCHEMA_FORCE" ]; then
         echo "Forcing a database schema update..." > "$OUTPUT" 
         pushd "$COMANAGE_REGISTRY_DIR/app" > "$OUTPUT" 2>&1
-        ./Console/cake database > "$OUTPUT" 2>&1
+        if [[ -n "${COMANAGE_REGISTRY_DATABASE_VERBOSE}" ]]; then
+            ./Console/cake database > /dev/stdout 2>&1
+        else
+            ./Console/cake database > "$OUTPUT" 2>&1
+        fi
         echo "Done forcing database schema update" > "$OUTPUT" 
         popd > "$OUTPUT" 2>&1
     fi
