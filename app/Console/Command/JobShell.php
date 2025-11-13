@@ -33,7 +33,7 @@ class JobShell extends AppShell {
                     'CoLocalization',
                     'CmpEnrollmentConfiguration',
                     'Lock');
-  
+
   /**
    * Dispatch the specified command.
    *
@@ -42,58 +42,58 @@ class JobShell extends AppShell {
    * @param  array   $params  Parameters to pass to the job
    * @param  integer $coJobId If specified, the already queued job to process
    */
-  
+
   public function dispatch($command, $params, $coJobId=null) {
     // In v3.3.0, the job name "Foo" implied a plugin named "FooJob" and a
     // model named "FooJob". However, this prevents other types of plugins from
     // defining jobs, and also prevents multiple jobs from being defined in the
     // same plugin.
-    
+
     // As of v4.0.0, commands are of the form "Plugin.Foo" corresponding to the
     // plugin model implementing the job (without "Job" suffixed).
-    
+
     $pluginModelName = $command . "Job";
     $pluginModel = ClassRegistry::init($pluginModelName);
-    
+
     try {
       $this->CoJob->clear();
-      
+
       // Pull current user info (maybe move into a utility call?, also used again below)
       $pwent = posix_getpwuid(posix_getuid());
-        
+
       if($coJobId) {
         // Processing an already queued job. In this case, if parameter validation
         // fails we want to terminate the job so it can be re-queued. (So we make
         // sure CoJob->id is set before validation.)
-        
+
         $this->CoJob->id = $coJobId;
-        
+
         $this->validateParameters($pluginModel->parameterFormat(), $params);
       } else {
         // Register a new job. In this case, if parameter validation fails we want
         // to just emit the error and not register the job. (So we make sure
         // CoJob->id is *not* set.)
-        
+
         $this->validateParameters($pluginModel->parameterFormat(), $params);
-        
+
         // Register a new CoJob. This will throw an exception if a job is already in progress.
-        
+
         $jobId = $this->CoJob->register($params['coid'],
                                         $command,
                                         null,
                                         null,
                                         _txt('rs.jb.started', array($pwent['name'], $pwent['uid'])));
-        
+
         $this->out(_txt('rs.jb.registered', array($jobId)), 1, Shell::NORMAL);
-        
+
         // Note actual passing of object here!
         $this->CoJob->id = $jobId;
       }
-      
+
       if($this->CoJob->id 
          || (isset($params['synchronous']) && $params['synchronous'])) {
         $this->CoJob->start($this->CoJob->id, _txt('rs.jb.started', array($pwent['name'], $pwent['uid'])));
-        
+
         // We have to look at $this->params for coid since we won't have it when we
         // were passed the Job ID.
         $pluginModel->execute($this->params['coid'], $this->CoJob, $params);
@@ -130,46 +130,46 @@ class JobShell extends AppShell {
     }
     catch(Exception $e) {
       $this->out($e->getMessage(), 1, Shell::NORMAL);
-      
+
       if(!empty($this->CoJob->id)) {
         $this->CoJob->finish($this->CoJob->id, $e->getMessage(), JobStatusEnum::Failed);
       }
     }
   }
-  
+
   /**
    * Configure the option parser based on the available job plugins.
    * 
    * @since  COmanage Registry v3.3.0
    * @return Cake Option Parser
    */
-  
+
   public function getOptionParser() {
     _bootstrap_plugin_txt();
-    
+
     $parser = parent::getOptionParser();
-    
+
     // Load the set of available jobs
-    
+
     foreach($this->Co->loadAvailablePlugins('job') as $jPlugin) {
       $pluginModel = ClassRegistry::init($jPlugin->name . "." . $jPlugin->name);
-        
+
       $models = $pluginModel->getAvailableJobs();
 
       foreach($models as $jModel => $helpTxt) {
         $command = $jPlugin->name . "." . $jModel;
         $jobModel = ClassRegistry::init($command . "Job", true);
-        
+
         // Add a subcommand
         $subparser = $jobModel->getOptionParser();
-        
+
         $parser->addSubcommand($command, array(
           'help' => $helpTxt,
           'parser' => $subparser
         ));
       }
     }
-    
+
     $parser->addOption(
       'coid',
       array(
@@ -202,11 +202,19 @@ class JobShell extends AppShell {
         'boolean' => false,
         'default' => false
       )
+    )->addOption(
+      'validate',
+      array(
+        'short'   => 'V',
+        'help'    => _txt('sh.job.arg.validate'),
+        'boolean' => true,
+        'default' => false
+      )
     );
-    
+
     return $parser;
   }
-  
+
   /**
    * Validate Job parameters. This function performs additional checks on top of
    * the core Cake option parser checks.
@@ -217,19 +225,19 @@ class JobShell extends AppShell {
    * @return array         Array of validated name => value pairs
    * @throws InvalidArgumentException
    */
-  
+
   protected function validateParameters($format, $args) {
     $ret = array();
-    
+
     if(!empty($args)) {
       foreach($args as $attr => $val) {
         // Most validation is handled by Cake's option parser
-        
+
         if(!isset($format[$attr])) {
           // Probably -s or -c
           continue;
         }
-        
+
         // For attributes of type int, is the value an integer?
         if($format[$attr]['type'] == 'int') {
           if(!preg_match('/^[0-9.+-]*$/', $val)) {
@@ -238,41 +246,139 @@ class JobShell extends AppShell {
         }
       }
     }
-    
+
     // NOTE: Reassigning $attr below here!
-    
+
     // Check that required values were provided
     foreach($format as $a => $cfg) {
       if($cfg['required'] && !isset($args[$a])) {
         throw new InvalidArgumentException("Required attribute " . $a . " not provided"); // XXX I18n
       }
     }
-    
+
     return $ret;
   }
-  
+
+  /**
+   * Remove stale locks and fail the jobs they were protecting.
+   *
+   * @since  COmanage Registry v4.1.0
+   */
+
+  protected function validateLocks() {
+    $args = array();
+    $args['contain'] = false;
+
+    if(!empty($this->params['coid'])) {
+      $args['conditions']['Lock.co_id'] = $this->params['coid'];
+    }
+
+    $locks = $this->Lock->find('all', $args);
+
+    if(empty($locks)) {
+      $this->out(_txt('sh.job.lock.validate.none'), 1, Shell::NORMAL);
+      return;
+    }
+
+    foreach($locks as $lock) {
+      $pid = (int)$lock['Lock']['pid'];
+
+      if(!$this->isPidActive($pid)) {
+        $this->out(_txt('sh.job.lock.stale', array($lock['Lock']['id'], $lock['Lock']['co_id'], $pid)), 1, Shell::NORMAL);
+
+        $this->Lock->delete($lock['Lock']['id']);
+
+        $this->failJobsForLock($lock['Lock']['co_id'], $lock['Lock']['label'], $pid);
+      }
+    }
+  }
+
+  /**
+   * Mark any in progress jobs for a CO as failed due to a stale lock.
+   *
+   * @since  COmanage Registry v4.1.0
+   * @param  integer $coId  CO ID
+   * @param  string  $label Lock label
+   * @param  integer $pid   PID associated with the lock
+   */
+
+  protected function failJobsForLock($coId, $label, $pid) {
+    if(!$coId) {
+      return;
+    }
+
+    $args = array();
+    $args['conditions']['CoJob.co_id'] = $coId;
+    $args['conditions']['CoJob.status'] = JobStatusEnum::InProgress;
+    $args['contain'] = false;
+
+    $jobs = $this->CoJob->find('all', $args);
+
+    if(empty($jobs)) {
+      return;
+    }
+
+    foreach($jobs as $job) {
+      $summary = _txt('sh.job.lock.fail', array($label, $pid));
+      $this->CoJob->finish($job['CoJob']['id'], $summary, JobStatusEnum::Failed);
+    }
+  }
+
+  /**
+   * Determine if the provided PID is still active.
+   *
+   * @since  COmanage Registry v4.1.0
+   * @param  integer $pid PID to check
+   * @return boolean      True if the PID is active
+   */
+
+  protected function isPidActive($pid) {
+    if($pid <= 0) {
+      return false;
+    }
+
+    $result = @posix_kill($pid, 0);
+
+    if($result) {
+      return true;
+    }
+
+    if(function_exists('posix_get_last_error')) {
+      $errno = posix_get_last_error();
+      $eperm = defined('POSIX_EPERM') ? POSIX_EPERM : 1;
+
+      if($errno == $eperm) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * JobShell entry point.
    *
    * @since  COmanage Registry v0.9.2
    */
-  
+
   function main() {
     // Run background / scheduled tasks.
 
     // Set App.base configuration
     $app_base = $this->CmpEnrollmentConfiguration->getAppBase();
     Configure::write('App.base', $app_base);
-    
+
     // We need to run this in getOptionParser since that runs before main()
     //_bootstrap_plugin_txt();
-    
+
     if(isset($this->params['cancel']) && $this->params['cancel']) {
       $pwent = posix_getpwuid(posix_getuid());
       $this->CoJob->cancel($this->params['cancel'], $pwent['name']);
+    } elseif(isset($this->params['validate']) && $this->params['validate']) {
+      $this->validateLocks();
     } elseif(isset($this->params['runqueue']) && $this->params['runqueue']) {
       // Obtain a run lock
-      
+
       try {
         $lockid = $this->Lock->obtain($this->params['coid'], 'jobshell');
       }
@@ -280,7 +386,7 @@ class JobShell extends AppShell {
         $this->out(_txt('er.lock', array($e->getMessage())), 1, Shell::QUIET);
         return;
       }
-      
+
       $this->out(_txt('sh.job.lock.obt', array($lockid)), 1, Shell::NORMAL);
 
       // Load localizations
@@ -291,7 +397,7 @@ class JobShell extends AppShell {
       // (1) to work with very large queues (this is effectively keyset pagination
       // with a single entry page size) and (2) for future compatibility with
       // support for multiple queue runners.
-      
+
       $args = array();
       $args['conditions']['CoJob.co_id'] = $this->params['coid'];
       $args['conditions']['CoJob.status'] = JobStatusEnum::Queued;
@@ -302,42 +408,42 @@ class JobShell extends AppShell {
       $args['order'] = 'CoJob.id ASC';
       $args['limit'] = 1;
       $args['contain'] = false;
-      
+
       $count = $this->CoJob->find('count', $args);
-      
+
       $this->out(_txt('sh.job.count', array($count)), 1, Shell::NORMAL);
-      
+
       // In order to prevent resource exhaustion, we'll cap the number of jobs
       // we run to 100 at which point we'll exit and another process can be started.
       $maxtodo = 100;
 
       while($maxtodo > 0) {
         $maxtodo--;
-        
+
         // We sort by id ASC so we always get the oldest job ready to process.
         // XXX When we support multiple queue runners we'll need a read lock,
         // at least until we change the job status.
-        
+
         $job = $this->CoJob->find('first', $args);
-        
+
         if(!empty($job)) {
           $this->out(_txt('sh.job.proc', array($job['CoJob']['id'])), 1, Shell::NORMAL);
-          
+
           // XXX CO-1729 pass in actor_co_person_id of registerer
           $this->dispatch($job['CoJob']['job_type'], json_decode($job['CoJob']['job_params'], true), $job['CoJob']['id']);
         } else {
           break;
         }
       }
-      
+
       $this->out(_txt('sh.job.lock.rel'), 1, Shell::NORMAL);
-      
+
       $this->Lock->release($lockid);
     } elseif(isset($this->params['synchronous']) && $this->params['synchronous']) {
       $args = $this->args;
-      
+
       $command = array_shift($args);
-      
+
       try {
         $lockid = $this->Lock->obtain($this->params['coid'], 'jobshell');
       }
@@ -348,14 +454,14 @@ class JobShell extends AppShell {
 
       // Load localizations
       $this->CoLocalization->load($this->params['coid']);
-      
+
       $this->dispatch($command, $this->params);
-      
+
       $this->Lock->release($lockid);
     } elseif(isset($this->params['unlock']) && $this->params['unlock']) {
       $this->Lock->release($this->params['unlock']);
     }
-    
+
     $this->out(_txt('sh.job.done'));
   }
 }
