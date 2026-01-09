@@ -90,6 +90,13 @@ RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" \
       && tar -zxf Oa4mpClient.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" --strip-components=1 \
       && rm -f Oa4mpClient.tar.gz
 
+# Deploy DynamoProvisioner plugin version 0.2.0
+ARG CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL=https://github.com/cilogon/DynamoProvisioner/archive/0.2.0.tar.gz
+RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" \
+      && wget -O DynamoProvisioner.tar.gz $CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL \
+      && tar -zxf DynamoProvisioner.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" --strip-components=1 \
+      && rm -f DynamoProvisioner.tar.gz
+
 # Copy customized core.php that sets a session timeout to 8 hours
 COPY container/registry/mod_auth_openidc/core.php "$COMANAGE_REGISTRY_DIR/app/Config/"
 
