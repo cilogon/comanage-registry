@@ -97,7 +97,25 @@ RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" \
       && tar -zxf DynamoProvisioner.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" --strip-components=1 \
       && rm -f DynamoProvisioner.tar.gz
 
-# Copy customized core.php that sets a session timeout to 8 hours
+# Deploy DynamoSession plugin version 0.0.1-awssdk
+ARG CILOGON_DYNAMO_SESSION_PLUGIN_SRC_URL=https://github.com/cilogon/DynamoSession/archive/0.0.1-awssdk.tar.gz
+RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoSession" \
+      && wget -O DynamoSession.tar.gz $CILOGON_DYNAMO_SESSION_PLUGIN_SRC_URL \
+      && tar -zxf DynamoSession.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoSession" --strip-components=1 \
+      && rm -f DynamoSession.tar.gz
+
+# Until Registry 4.6.x is released copy login/ and logout/ PHP code into place.
+COPY container/registry/mod_auth_openidc/app/webroot/auth/login/index.php "$COMANAGE_REGISTRY_DIR/app/webroot/auth/login/index.php"
+COPY container/registry/mod_auth_openidc/app/webroot/auth/logout/index.php "$COMANAGE_REGISTRY_DIR/app/webroot/auth/logout/index.php"
+
+# Copy customized healthcheck into place.
+COPY container/registry/mod_auth_openidc/app/webroot/healthcheck.php "$COMANAGE_REGISTRY_DIR/app/webroot/healthcheck.php"
+
+# As of Registry 4.6.x the DynamoSession plugin without the AWS SDK is
+# in AvailablePlugin. We remove it to use our version.
+RUN rm -rf "$COMANAGE_REGISTRY_DIR/app/AvailablePlugin/DynamoSession"
+
+# Copy customized core.php that configures DynamoSession.
 COPY container/registry/mod_auth_openidc/core.php "$COMANAGE_REGISTRY_DIR/app/Config/"
 
 # Install MIT Kerberos runtime libraries and development files.
