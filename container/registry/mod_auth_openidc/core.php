@@ -172,11 +172,36 @@
  * the cake shell command: cake schema create Sessions
  *
  */
-	Configure::write('Session', array(
-		'defaults' => 'php',
-		'timeout' => 480,
-		'cookieTimeout' => 480
-	));
+
+  // dynamo db sessions
+  if(getenv('COMANAGE_REGISTRY_DYNAMODB_REGION') and
+     getenv('COMANAGE_REGISTRY_DYNAMODB_PHPSESSIONS_TABLE') and
+     getenv('COMANAGE_REGISTRY_DYNAMODB_PHPSESSIONS_ACCESSKEY') and
+     getenv('COMANAGE_REGISTRY_DYNAMODB_PHPSESSIONS_SECRETACCESSKEY')) {
+  	Configure::write('Session', array(
+      'cookie' => 'CAKEPHP',
+      'timeout' => 480,
+      'cookieTimeout' => 480,
+      'handler' => array(
+        'engine' => 'DynamoSession.DynamoSession',
+      ),
+      'ini' => array(
+        'session.use_trans_sid' => 0,
+        'session.use_cookies' => 1,
+        'session.serialize_handler' => 'php',
+        'session.cookie_httponly' => true,
+        // session.gc_maxlifetime in seconds
+        // default is 1440 (24 minutes)
+        'session.gc_maxlifetime' => 86400,
+      )
+  	));
+  } else {
+  // default session config
+  	Configure::write('Session', array(
+  		'defaults' => 'php',
+      'cookie' => 'CAKEPHP',
+  	));
+  }
 
 /**
  * The level of CakePHP security.
@@ -212,7 +237,7 @@
 
 /**
  * Security.cipherSeed is a random numeric string (digits only) used to encrypt/decrypt strings.
- * It is read from the file app/Config/security.seed and should be at least 29 
+ * It is read from the file app/Config/security.seed and should be at least 29
  * characters long. If the file is not present or readable a default is used
  * but this is not recommended.
  */
@@ -268,7 +293,7 @@
 	Configure::write('Acl.database', 'default');
 
 /**
- * Edit this line and correct your server timezone to fix 
+ * Edit this line and correct your server timezone to fix
  * any date & time related errors.
  * Actually, leave this at UTC to ensure database records are consistent.
  */
@@ -374,3 +399,4 @@ Cache::config('_cake_model_', array(
 	'serialize' => ($engine === 'File'),
 	'duration' => $duration
 ));
+
