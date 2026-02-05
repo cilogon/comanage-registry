@@ -90,8 +90,8 @@ RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" \
       && tar -zxf Oa4mpClient.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" --strip-components=1 \
       && rm -f Oa4mpClient.tar.gz
 
-# Deploy DynamoProvisioner plugin version 0.3.0
-ARG CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL=https://github.com/cilogon/DynamoProvisioner/archive/0.3.0.tar.gz
+# Deploy DynamoProvisioner plugin version 0.4.0
+ARG CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL=https://github.com/cilogon/DynamoProvisioner/archive/0.4.0.tar.gz
 RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" \
       && wget -O DynamoProvisioner.tar.gz $CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL \
       && tar -zxf DynamoProvisioner.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" --strip-components=1 \
