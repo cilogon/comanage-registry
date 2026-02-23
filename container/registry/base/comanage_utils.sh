@@ -151,6 +151,7 @@ function comanage_utils::consume_injected_environment() {
         COMANAGE_REGISTRY_HTTP_NO
         COMANAGE_REGISTRY_HTTPS_LISTEN_PORT
         COMANAGE_REGISTRY_HTTPS_NO
+        COMANAGE_REGISTRY_LIMIT_REQUEST_FIELD_SIZE
         COMANAGE_REGISTRY_OAUTH_SERVER_METADATA_URL
         COMANAGE_REGISTRY_OIDC_AUTH_REQUEST_PARAMS
         COMANAGE_REGISTRY_OIDC_CLIENT_ID
@@ -1408,6 +1409,7 @@ EOF
 # Write virtual host HTTP opening stanza
 # Globals:
 #  COMANAGE_REGISTRY_HTTP_LISTEN_PORT
+#  COMANAGE_REGISTRY_LIMIT_REQUEST_FIELD_SIZE
 #  COMANAGE_REGISTRY_VIRTUAL_HOST_FQDN
 #  COMANAGE_REGISTRY_VIRTUAL_HOST_PORT
 #  COMANAGE_REGISTRY_VIRTUAL_HOST_SCHEME
@@ -1427,6 +1429,8 @@ ServerName ${COMANAGE_REGISTRY_VIRTUAL_HOST_SCHEME:-http}://${COMANAGE_REGISTRY_
 UseCanonicalName On
 UseCanonicalPhysicalPort On
 
+LimitRequestFieldSize ${COMANAGE_REGISTRY_LIMIT_REQUEST_FIELD_SIZE:-8190}
+
 Header set Content-Security-Policy "frame-ancestors 'self';"
 
 EOF
@@ -1435,6 +1439,7 @@ EOF
 ##########################################
 # Write virtual host HTTPS opening stanza
 # Globals:
+#  COMANAGE_REGISTRY_LIMIT_REQUEST_FIELD_SIZE
 #  COMANAGE_REGISTRY_VIRTUAL_HOST_SCHEME
 #  COMANAGE_REGISTRY_VIRTUAL_HOST_FQDN
 #  COMANAGE_REGISTRY_VIRTUAL_HOST_PORT
@@ -1454,6 +1459,8 @@ function comanage_utils::virtual_host_https_opening() {
 ServerName ${COMANAGE_REGISTRY_VIRTUAL_HOST_SCHEME:-https}://${COMANAGE_REGISTRY_VIRTUAL_HOST_FQDN}:${COMANAGE_REGISTRY_VIRTUAL_HOST_PORT:-443}
 UseCanonicalName On
 UseCanonicalPhysicalPort On
+
+LimitRequestFieldSize ${COMANAGE_REGISTRY_LIMIT_REQUEST_FIELD_SIZE:-8190}
 
 Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains"
 Header always set Content-Security-Policy "frame-ancestors 'self';"
