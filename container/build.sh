@@ -204,6 +204,57 @@ function build_mod_auth_openidc() {
 }
 
 ###########################################################################
+# Build the Registry mod_auth_openidc and crond images, then docker tag
+# both for the CILogon us-east-2 and ap-southeast-2 ECR registries. Does
+# not push.
+# Globals:
+#   None
+# Arguments:
+#   Tag label, a string.
+#   Tag suffix, a string.
+#   Docker build flags, other flags for docker build.
+# Outputs:
+#   None
+###########################################################################
+function build_cilogon_ecr() {
+    local label
+    local suffix
+
+    label="$1"
+    suffix="$2"
+
+    if [[ -z "${label}" ]]; then
+        err "ERROR:build_cilogon_ecr: label cannot be empty"
+        return 1
+    fi
+
+    if [[ -z "${suffix}" ]]; then
+        err "ERROR:build_cilogon_ecr: suffix cannot be empty"
+        return 1
+    fi
+
+    declare -a docker_build_flags=("${@:3}")
+
+    local -a ecr_registries=(
+        "495649616520.dkr.ecr.us-east-2.amazonaws.com"
+        "495649616520.dkr.ecr.ap-southeast-2.amazonaws.com"
+    )
+
+    build_base "" "${label}" "${suffix}" "${docker_build_flags[@]}" || return 1
+    build_mod_auth_openidc "" "${label}" "${suffix}" "${docker_build_flags[@]}" || return 1
+    build_crond "" "${label}" "${suffix}" "${docker_build_flags[@]}" || return 1
+
+    local registry_tag="comanage-registry:${label}-mod_auth_openidc-${suffix}"
+    local crond_tag="comanage-registry-cron:${label}-${suffix}"
+
+    local ecr
+    for ecr in "${ecr_registries[@]}"; do
+        docker tag "${registry_tag}" "${ecr}/${registry_tag}" || return 1
+        docker tag "${crond_tag}" "${ecr}/${crond_tag}" || return 1
+    done
+}
+
+###########################################################################
 # Echo errors to stderr with timestamp.
 # Globals:
 #   None
@@ -234,6 +285,7 @@ NAME
 
 SYNOPSIS
     $0 -s|--suffix=SUFFIX [OPTION]... PRODUCT
+    $0 [OPTION]... --cilogon-ecr
 
 DESCRIPTION
     Build COmanage Registry container images.
@@ -244,6 +296,17 @@ DESCRIPTION
 
     where AUTHENTICATION is one of
         mod_auth_openidc
+
+    Alternatively, --cilogon-ecr may be specified instead of a PRODUCT
+    to build both the registry mod_auth_openidc image and the crond
+    image and docker tag each for the CILogon us-east-2 and
+    ap-southeast-2 ECR registries:
+
+        495649616520.dkr.ecr.us-east-2.amazonaws.com
+        495649616520.dkr.ecr.ap-southeast-2.amazonaws.com
+
+    --cilogon-ecr does not push. It is mutually exclusive with --registry,
+    --namespace, and any PRODUCT positional argument.
 
     The full name of the built images has the format
 
@@ -267,6 +330,13 @@ DESCRIPTION
 
     --build-arg
             pass build argument to docker build
+
+    --cilogon-ecr
+            build the registry mod_auth_openidc image and the crond
+            image and docker tag both for the CILogon us-east-2 and
+            ap-southeast-2 ECR registries; does not push; mutually
+            exclusive with --registry, --namespace, and PRODUCT;
+            when used, --suffix defaults to 1 if not specified
 
     -l, --label
             label to use in image tag, default is determined
@@ -315,6 +385,11 @@ EXAMPLES
         20220501, and label mylabel. The full name of the image will
         have the format
         comanage-registry:mylabel-mod_auth_openidc-20220501
+
+    $0 -s 1 --cilogon-ecr
+        Build the registry mod_auth_openidc image and the crond image
+        with tag suffix 1, then docker tag both for the CILogon
+        us-east-2 and ap-southeast-2 ECR registries.
 EOF
 
     echo "${usage}"
@@ -359,6 +434,7 @@ function label_from_repository() {
 ###########################################################################
 function main() {
     local authentication
+    local cilogon_ecr=0
     local docker_build_flags
     local gnu_getopt_out
     local label=""
@@ -387,6 +463,7 @@ function main() {
                      --options hl:s: \
                      --longoptions help \
                      --longoptions build-arg: \
+                     --longoptions cilogon-ecr \
                      --longoptions label: \
                      --longoptions namespace: \
                      --longoptions no-cache \
@@ -406,6 +483,7 @@ function main() {
         case "$1" in
             -h | --help ) usage $@; exit ;;
             --build-arg ) docker_build_flags+=(--build-arg "$2") ; shift 2 ;;
+            --cilogon-ecr ) cilogon_ecr=1; shift 1 ;;
             -l | --label ) label="$2"; shift 2 ;;
             --namespace ) namespace="$2"; shift 2 ;;
             --no-cache ) docker_build_flags+=(--no-cache) ; shift 1 ;;
@@ -417,9 +495,35 @@ function main() {
         esac
     done
 
+    if (( cilogon_ecr == 1 )) && [[ -z "${suffix}" ]]; then
+        suffix=1
+    fi
+
     if [[ -z "${suffix}" ]]; then
         err "ERROR: --suffix must be specified"
         exit 1
+    fi
+
+    if (( cilogon_ecr == 1 )); then
+        if [[ -n "${registry}" ]]; then
+            err "ERROR: --registry cannot be combined with --cilogon-ecr"
+            exit 1
+        fi
+        if [[ -n "${namespace}" ]]; then
+            err "ERROR: --namespace cannot be combined with --cilogon-ecr"
+            exit 1
+        fi
+        if [[ -n "$1" ]]; then
+            err "ERROR: PRODUCT positional argument cannot be combined with --cilogon-ecr"
+            exit 1
+        fi
+
+        if [[ -z "${label}" ]]; then
+            label="$(label_from_repository)"
+        fi
+
+        build_cilogon_ecr "${label}" "${suffix}" "${docker_build_flags[@]}"
+        return $?
     fi
 
     if [[ -z "${namespace}" && -n "${registry}" ]]; then
