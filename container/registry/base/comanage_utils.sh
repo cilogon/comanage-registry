@@ -965,11 +965,8 @@ function comanage_utils::process_slash_root() {
 
     pushd "${slash_root}"
 
-    # Copy all files and symlinks and preserve all details but exclude any files
-    # for the Shibboleth SP if they exist to allow the Shib SP
-    # entrypoint script to process that path and prevent a race
-    # condition.
-    find . -type f,l -not -path "./etc/shibboleth/*" | xargs -I{} cp --preserve=all --parents --no-dereference {} / > ${OUTPUT} 2>&1
+    # Copy all files and symlinks and preserve all details.
+    find . -type f,l | xargs -I{} cp --preserve=all --parents --no-dereference {} / > ${OUTPUT} 2>&1
 
     popd
 
@@ -1232,20 +1229,12 @@ function comanage_utils::virtual_host_authentication() {
         virtual_host_config="$1"
 
         mod_auth_openidc=0
-        shib=0
 
         # Test for mod_auth_openidc module.
         (a2query -m auth_openidc) > /dev/null 2>&1
         a2query_out=$?
         if [[ $a2query_out -eq 0 ]]; then
             mod_auth_openidc=1
-        fi
-
-        # Test for shib2 module.
-        (a2query -m shib2) > /dev/null 2>&1
-        a2query_out=$?
-        if [[ $a2query_out -eq 0 ]]; then
-            shib=1
         fi
 
         # Write mod_auth_openidc if module enabled.
@@ -1312,43 +1301,6 @@ Require valid-user
 RewriteEngine On
 RewriteCond %{QUERY_STRING} !after_redirect
 RewriteRule ^/registry/auth/logout.* https://%{HTTP_HOST}/secure/redirect?logout=https://%{HTTP_HOST}/registry/auth/logout/?after_redirect [L,R]
-EOF
-
-        # Write shib if module enabled.
-        elif [[ $shib -eq 1 ]]; then
-            cat >> $virtual_host_config <<EOF
-
-<Location "/Shibboleth.sso">
-SetHandler shib
-</Location>
-
-<Directory /var/www/html/registry/auth/login>
-AuthType shibboleth
-ShibRequestSetting requireSession 1
-Require valid-user
-</Directory>
-
-<Location />
-AuthType shibboleth
-Require shibboleth
-</Location>
-
-RewriteEngine On
-RewriteCond %{QUERY_STRING} !after_redirect
-RewriteRule ^/registry/auth/logout.* https://%{HTTP_HOST}/Shibboleth.sso/Logout?return=https://%{HTTP_HOST}/registry/auth/logout/?after_redirect [L,R]
-EOF
-
-        # Else assume basic authentication.
-        else
-            cat >> $virtual_host_config <<EOF
-
-<Directory /var/www/html/registry/auth/login>
-AuthType Basic
-AuthName "COmanage Registry Login"
-AuthBasicProvider file
-AuthUserFile "/etc/apache2/basic-auth"
-Require valid-user
-</Directory>
 EOF
         fi
 }
