@@ -56,7 +56,7 @@ function build_base() {
 
     tag="comanage-registry-base:${label}-${suffix}"
 
-    docker_build_command=(docker build)
+    docker_build_command=(docker buildx build)
 
     if ((${#docker_build_flags[@]})); then
         for flag in "${docker_build_flags[@]}"; do
@@ -118,7 +118,7 @@ function build_crond() {
 
     tag="comanage-registry-cron:${label}-${suffix}"
 
-    docker_build_command=(docker build)
+    docker_build_command=(docker buildx build)
 
     if ((${#docker_build_flags[@]})); then
         for flag in "${docker_build_flags[@]}"; do
@@ -177,7 +177,7 @@ function build_mod_auth_openidc() {
 
     tag="comanage-registry:${label}-mod_auth_openidc-${suffix}"
 
-    docker_build_command=(docker build)
+    docker_build_command=(docker buildx build)
 
     if ((${#docker_build_flags[@]})); then
         for flag in "${docker_build_flags[@]}"; do
