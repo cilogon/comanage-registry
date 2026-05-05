@@ -21,6 +21,13 @@ ARG COMANAGE_REGISTRY_BASE_IMAGE_VERSION=1
 
 FROM comanage-registry-base:${COMANAGE_REGISTRY_VERSION}-${COMANAGE_REGISTRY_BASE_IMAGE_VERSION}
 
+# Deploy DynamoProvisioner plugin version 0.4.0
+ARG CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL=https://github.com/cilogon/DynamoProvisioner/archive/0.4.0.tar.gz
+RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" \
+      && wget -O DynamoProvisioner.tar.gz $CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL \
+      && tar -zxf DynamoProvisioner.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/DynamoProvisioner" --strip-components=1 \
+      && rm -f DynamoProvisioner.tar.gz
+
 RUN apt-get update \
       && apt-get install -y --no-install-recommends \
         busybox-syslogd \
