@@ -35,6 +35,7 @@ RUN apt-get update \
         ca-certificates \
         libcjose0 \
         libcjose-dev \
+        libjq-dev \
         libcurl4-openssl-dev \
         libjansson-dev \
         libpcre3-dev \
@@ -47,7 +48,7 @@ RUN MOD_AUTH_OPENIDC_URL="https://github.com/zmartzone/mod_auth_openidc/releases
       && wget -O mod_auth_openidc.tar.gz "${MOD_AUTH_OPENIDC_URL}" \
       && tar -zxf mod_auth_openidc.tar.gz -C /tmp/mod_auth_openidc --strip-components=1 \
       && cd /tmp/mod_auth_openidc \
-      && ./configure --with-apxs2=`which apxs2` \
+      && ./configure --with-apxs2=`which apxs2` --with-jq=/usr \
       && make \
       && make install 
 
@@ -66,6 +67,10 @@ RUN apt-get update \
           libcjose0
 
 COPY --from=building /usr/lib/apache2/modules/mod_auth_openidc.so /usr/lib/apache2/modules/mod_auth_openidc.so
+
+# Install runtime dependency of mod_auth_openidc
+RUN apt-get update && apt-get install -y \
+        libjq1
 
 RUN echo "LoadModule auth_openidc_module /usr/lib/apache2/modules/mod_auth_openidc.so" > /etc/apache2/mods-available/auth_openidc.load \
       && a2enmod auth_openidc 
