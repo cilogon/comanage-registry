@@ -87,13 +87,28 @@ RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/CilogonEppnEnroller" \
       && cd "$COMANAGE_REGISTRY_DIR/app/Plugin/CilogonEppnEnroller/View/CilogonEppnEnrollers" \
       && ln -s ../../../../View/Standard/edit.ctp edit.ctp
 
-# Deploy Oa4mpClient plugin version 7.0.0-rc8
+# Deploy Oa4mpClient plugin version 7.0.0-rc10
 ARG CILOGON_OA4MP_CLIENT_PLUGIN_SRC_URL=https://github.com/cilogon/Oa4mpClient/archive/7.0.0-rc10.tar.gz
 
+# The upstream tarball is a source distribution, so it also carries the
+# plugin's own test suite, docs, and development files. Prune to the paths
+# the running plugin uses, in this same RUN so the rest never lands in an
+# image layer. cfg_contract.json is kept because the plugin reads it at run
+# time through App::pluginPath(); its cfg_schema.json, cfg_example.json, and
+# cfg_format.md siblings are documentation only and are dropped. The trailing
+# loop fails the build if a future release renames or drops one of these.
 RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" \
       && wget -O Oa4mpClient.tar.gz $CILOGON_OA4MP_CLIENT_PLUGIN_SRC_URL \
       && tar -zxf Oa4mpClient.tar.gz -C "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" --strip-components=1 \
-      && rm -f Oa4mpClient.tar.gz
+      && rm -f Oa4mpClient.tar.gz \
+      && cd "$COMANAGE_REGISTRY_DIR/app/Plugin/Oa4mpClient" \
+      && find . -mindepth 1 -maxdepth 1 \
+           ! -name Config ! -name Controller ! -name Lib ! -name Locale \
+           ! -name Model ! -name View ! -name webroot ! -name cfg_contract.json \
+           -exec rm -rf {} + \
+      && for p in Config Controller Lib Locale Model View webroot cfg_contract.json; do \
+           [ -e "$p" ] || { echo "ERROR: Oa4mpClient is missing $p after prune" >&2; exit 1; }; \
+         done
 
 # Deploy DynamoProvisioner plugin version 0.4.0
 ARG CILOGON_DYNAMO_PROVISIONER_PLUGIN_SRC_URL=https://github.com/cilogon/DynamoProvisioner/archive/0.4.0.tar.gz
