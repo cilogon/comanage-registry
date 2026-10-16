@@ -205,8 +205,10 @@ function build_mod_auth_openidc() {
 
 ###########################################################################
 # Build the Registry mod_auth_openidc and crond images, then docker tag
-# both for the CILogon us-east-2 and ap-southeast-2 ECR registries. Does
-# not push.
+# both for the CILogon us-east-2 and ap-southeast-2 ECR registries. Also
+# docker tag the mod_auth_openidc image for the CILogon public ECR
+# repository (versioned tag and latest) and the GHCR repository (latest
+# only). Does not push.
 # Globals:
 #   None
 # Arguments:
@@ -239,6 +241,8 @@ function build_cilogon_ecr() {
         "495649616520.dkr.ecr.us-east-2.amazonaws.com"
         "495649616520.dkr.ecr.ap-southeast-2.amazonaws.com"
     )
+    local public_ecr_registry="public.ecr.aws/cilogon"
+    local ghcr_registry="ghcr.io/cilogon"
 
     build_base "" "${label}" "${suffix}" "${docker_build_flags[@]}" || return 1
     build_mod_auth_openidc "" "${label}" "${suffix}" "${docker_build_flags[@]}" || return 1
@@ -252,6 +256,10 @@ function build_cilogon_ecr() {
         docker tag "${registry_tag}" "${ecr}/${registry_tag}" || return 1
         docker tag "${crond_tag}" "${ecr}/${crond_tag}" || return 1
     done
+
+    docker tag "${registry_tag}" "${public_ecr_registry}/${registry_tag}" || return 1
+    docker tag "${registry_tag}" "${public_ecr_registry}/comanage-registry:latest" || return 1
+    docker tag "${registry_tag}" "${ghcr_registry}/comanage-registry:latest" || return 1
 }
 
 ###########################################################################
@@ -305,6 +313,12 @@ DESCRIPTION
         495649616520.dkr.ecr.us-east-2.amazonaws.com
         495649616520.dkr.ecr.ap-southeast-2.amazonaws.com
 
+    The registry mod_auth_openidc image is also docker tagged for the
+    CILogon public repositories (the crond image is not):
+
+        public.ecr.aws/cilogon/comanage-registry  versioned tag and latest
+        ghcr.io/cilogon/comanage-registry         latest only
+
     --cilogon-ecr does not push. It is mutually exclusive with --registry,
     --namespace, and any PRODUCT positional argument.
 
@@ -334,8 +348,11 @@ DESCRIPTION
     --cilogon-ecr
             build the registry mod_auth_openidc image and the crond
             image and docker tag both for the CILogon us-east-2 and
-            ap-southeast-2 ECR registries; does not push; mutually
-            exclusive with --registry, --namespace, and PRODUCT;
+            ap-southeast-2 ECR registries; also docker tag the
+            registry image for public.ecr.aws/cilogon (versioned tag
+            and latest) and ghcr.io/cilogon (latest only); does not
+            push; mutually exclusive with --registry, --namespace,
+            and PRODUCT;
             when used, --suffix defaults to 1 if not specified
 
     -l, --label
@@ -389,7 +406,9 @@ EXAMPLES
     $0 -s 1 --cilogon-ecr
         Build the registry mod_auth_openidc image and the crond image
         with tag suffix 1, then docker tag both for the CILogon
-        us-east-2 and ap-southeast-2 ECR registries.
+        us-east-2 and ap-southeast-2 ECR registries, and docker tag
+        the registry image for public.ecr.aws/cilogon (versioned tag
+        and latest) and ghcr.io/cilogon (latest only).
 EOF
 
     echo "${usage}"
