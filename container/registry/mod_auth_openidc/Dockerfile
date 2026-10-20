@@ -87,8 +87,8 @@ RUN mkdir -p "$COMANAGE_REGISTRY_DIR/app/Plugin/CilogonEppnEnroller" \
       && cd "$COMANAGE_REGISTRY_DIR/app/Plugin/CilogonEppnEnroller/View/CilogonEppnEnrollers" \
       && ln -s ../../../../View/Standard/edit.ctp edit.ctp
 
-# Deploy Oa4mpClient plugin version 7.0.0-rc10
-ARG CILOGON_OA4MP_CLIENT_PLUGIN_SRC_URL=https://github.com/cilogon/Oa4mpClient/archive/7.0.0-rc10.tar.gz
+# Deploy Oa4mpClient plugin version 7.0.0-rc11
+ARG CILOGON_OA4MP_CLIENT_PLUGIN_SRC_URL=https://github.com/cilogon/Oa4mpClient/archive/7.0.0-rc11.tar.gz
 
 # The upstream tarball is a source distribution, so it also carries the
 # plugin's own test suite, docs, and development files. Prune to the paths
