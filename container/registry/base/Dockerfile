@@ -52,13 +52,6 @@ ARG LDAPTLS_CACERT
 ENV LDAPTLS_CACERT=${LDAPTLS_CACERT:-/etc/ssl/certs/ca-certificates.crt}
 LABEL ldaptls_cacert=${LDAPTLS_CACERT}
 
-# Build the redis extension to use Redis for session storage.
-RUN docker-php-source extract \
-    && pecl bundle -d /usr/src/php/ext redis \
-    && docker-php-ext-install redis \
-    && docker-php-ext-enable redis \
-    && docker-php-source delete
-
 # Copy the production php.ini into place.
 RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
