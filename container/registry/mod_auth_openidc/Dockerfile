@@ -144,7 +144,7 @@ RUN apt-get update && apt-get install -y \
         libkrb5-dev
 
 # Default PECL krb5 version but may be overriden using a build argument.
-ARG PECL_KRB5_VERSION=1.1.5
+ARG PECL_KRB5_VERSION=1.2.4
 ENV PECL_KRB5_VERSION=${PECL_KRB5_VERSION}
 
 # Use the helper functions from the upstream php Docker image
