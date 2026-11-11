@@ -540,6 +540,19 @@
     <index name="names_i3">
       <col>org_identity_id</col>
     </index>
+
+    <!-- Composite indexes so lookups of current (non-changelog) names for a
+         person don't fall back to names_i1 (name_id). Every current row has
+         name_id NULL, so names_i1's average-based estimate is badly wrong. -->
+    <index name="names_i4">
+      <col>co_person_id</col>
+      <col>name_id</col>
+    </index>
+    
+    <index name="names_i5">
+      <col>org_identity_id</col>
+      <col>name_id</col>
+    </index>
   </table>
   
   <table name="api_users">
